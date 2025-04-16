@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SQL Prompt Generator for LLMs</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background: #f8fafc;
+      color: #333;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 15px;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+      font-family: monospace;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #007acc;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #005fa3;
+    }
+    pre {
+      background: #f0f0f0;
+      padding: 20px;
+      white-space: pre-wrap;
+      border-left: 4px solid #007acc;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🧠 SQL Function Prompt Generator for LLMs</h1>
+
+  <p>Generate a tailored prompt to help LLMs write PostgreSQL functions (wrapper + core) with Debezium-style audit logging.</p>
+
+  <label for="entity">Entity name (e.g., location)</label>
+  <input type="text" id="entity" placeholder="organizational_unit">
+
+  <label for="inputType">Input type (composite)</label>
+  <input type="text" id="inputType" placeholder="organizational_unit_input">
+
+  <label for="view">Final JSON view</label>
+  <input type="text" id="view" placeholder="tv_organizational_unit">
+
+  <label for="viewType">Type of final read structure</label>
+  <select id="viewType">
+    <option value="v">Regular view (v_)</option>
+    <option value="tv">Materialized or table view (tv_)</option>
+  </select>
+
+  <label for="table">Main table name</label>
+  <input type="text" id="table" placeholder="tb_organizational_unit">
+
+  <label for="ddl">Table definitions (DDL)</label>
+  <textarea id="ddl" rows="10" placeholder="CREATE TABLE tb_organizational_unit (...);"></textarea>
+
+  <button onclick="generatePrompt()">Generate Prompt</button>
+
+  <h2>📋 Generated Prompt:</h2>
+  <pre id="output"></pre>
+
+  <script>
+    function generatePrompt() {
+      const entity = document.getElementById('entity').value.trim();
+      const inputType = document.getElementById('inputType').value.trim();
+      const view = document.getElementById('view').value.trim();
+      const viewType = document.getElementById('viewType').value.trim();
+      const table = document.getElementById('table').value.trim();
+      const ddl = document.getElementById('ddl').value.trim();
+
+      const prompt = `
+You are an expert in SQL and PL/pgSQL, specializing in business entity modeling and Debezium-compatible audit logging.
+
+Please generate two PostgreSQL functions for the entity "${entity}":
+
+1. A **wrapper function** that takes a JSONB input from an API (GraphQL/REST), parses it, and calls a strongly-typed core function.
+2. A **core function** that handles INSERT, UPDATE, or DELETE logic and logs the operation to a table named \`tb_entity_change_log\` using a **Debezium-compatible format**.
+
+The Debezium-like JSON format should be embedded in the \`object_data\` column, like so:
+
+{
+  "before": { ... },
+  "after": { ... },
+  "op": "c/u/d",
+  "source": {
+    "table": "${table}",
+    "schema": "public",
+    "db": "<database_name>",
+    "organization": "<organization_uuid>",
+    "ts_ms": <current_timestamp_in_ms>
+  }
+}
+
+### Context:
+- Entity: ${entity}
+- Composite input type: ${inputType}
+- JSON view: ${view}
+- Final read structure type: ${viewType === 'tv' ? 'table view (tv_)' : 'regular view (v_)'}
+- Main table: ${table}
+- Audit function to use: \`log_entity_change(...)\`
+- Return type: \`mutation_result\`
+
+### Input parameters for both functions:
+- \`input_pk_organization UUID\`
+- \`input_created_by UUID\`
+- \`input_json JSONB\` (for wrapper)
+
+### SQL Definitions (DDL) for context:
+${ddl}
+
+Instructions:
+- Start with the wrapper, then the core function.
+- Add doc blocks to help generate similar logic for other entities.
+- Use consistent naming patterns: \`<operation>_${entity}[_with_log]\`
+- Keep code clean and business-focused, no unnecessary comments.
+      `;
+
+      document.getElementById('output').textContent = prompt.trim();
+    }
+  </script>
+
+</body>
+</html>
