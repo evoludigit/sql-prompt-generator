@@ -15,7 +15,7 @@ This tool helps you generate tailored prompt instructions for Large Language Mod
 ## 🚀 Hosted Version
 
 You can access the generator live at:  
-👉 https://your-username.github.io/sql-prompt-generator/
+👉 https://evoludigit.github.io/sql-prompt-generator/
 
 ## 📁 Project Structure
 
